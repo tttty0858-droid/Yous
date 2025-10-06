@@ -1,0 +1,35 @@
+name: VPS
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: إعداد SSH
+        run: |
+          sudo apt update -y
+          sudo apt install -y openssh-server
+          sudo systemctl enable ssh
+          sudo systemctl start ssh
+          echo "root:admin@123" | sudo chpasswd
+          echo "PermitRootLogin yes" | sudo tee -a /etc/ssh/sshd_config
+          sudo service ssh restart
+          echo "✅ SSH جاهز | المستخدم: root | كلمة المرور: admin@123"
+
+      - name: تثبيت Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=vps-${{ github.run_id }}
+          tsIP=$(tailscale ip -4 | head -n 1)
+          echo "TAILSCALE_IP=$tsIP" >> $GITHUB_ENV
+          echo "✅ عنوان Tailscale: $tsIP"
+
+      - name: إبقاء الـVPS شغال
+        run: |
+          while true; do
+            echo "[$(date)] VPS يعمل..."
+            sleep 300
+          done
